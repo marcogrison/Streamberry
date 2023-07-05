@@ -53,14 +53,14 @@ namespace StreamberryAPI.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<FilmeStreamingModel>()
-             .HasOne(fs => fs.Filme)
-             .WithMany()
-             .HasForeignKey(fs => fs.FilmeId)
-             .OnDelete(DeleteBehavior.Cascade);
+            .HasOne(fs => fs.Filme)
+            .WithMany(fm => fm.FilmeStreamings) // Adicione esta linha para especificar a propriedade de navegação inversa
+            .HasForeignKey(fs => fs.FilmeId)
+            .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<FilmeStreamingModel>()
                 .HasOne(fs => fs.Streaming)
-                .WithMany()
+                .WithMany() // Remova o uso do método WithMany() neste caso, pois não há uma propriedade de navegação inversa
                 .HasForeignKey(fs => fs.StreamingId)
                 .OnDelete(DeleteBehavior.Cascade);
 

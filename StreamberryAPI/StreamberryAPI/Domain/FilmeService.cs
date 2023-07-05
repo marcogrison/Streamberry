@@ -87,7 +87,7 @@ namespace StreamberryAPI.Domain
                 var novoFilmeStreaming = new FilmeStreamingModel
                 {
                     FilmeId = filme.ID,
-                    StreamingId = streaming.ID
+                    StreamingId = streaming.ID,   
                 };
 
                 _dbContext.FilmeStreaming.Add(novoFilmeStreaming);
@@ -165,22 +165,49 @@ namespace StreamberryAPI.Domain
             }
         }
 
-
         public void DeleteFilme(string nome)
         {
-            FilmeModel existingFilme = _dbContext.Filme.Include(f => f.Comentarios).FirstOrDefault(f => f.Titulo == nome);
-
-            if (existingFilme != null)
+            using (var transaction = _dbContext.Database.BeginTransaction())
             {
-                // Verificar se existem comentários associados ao filme
-                if (existingFilme.Comentarios != null && existingFilme.Comentarios.Count > 0)
+                try
                 {
-                    // Excluir os comentários associados ao filme
-                    _dbContext.Comentario.RemoveRange(existingFilme.Comentarios);
-                }
+                    FilmeModel existingFilme = _dbContext.Filme
+                        .Include(f => f.Comentarios)
+                        .Include(f => f.Streamings)
+                        .FirstOrDefault(f => f.Titulo == nome);
 
-                _dbContext.Filme.Remove(existingFilme);
-                _dbContext.SaveChanges();
+                    if (existingFilme != null)
+                    {
+                        // Excluir registros relacionados na tabela "filmestreaming"
+                        var filmestreamings = _dbContext.FilmeStreaming
+                            .Where(fs => fs.FilmeId == existingFilme.ID)
+                            .ToList();
+
+                        foreach (var filmestreaming in filmestreamings)
+                        {
+                            _dbContext.FilmeStreaming.Remove(filmestreaming);
+                        }
+
+                        // Verificar se existem comentários associados ao filme
+                        if (existingFilme.Comentarios != null && existingFilme.Comentarios.Count > 0)
+                        {
+                            // Excluir os comentários associados ao filme
+                            _dbContext.Comentario.RemoveRange(existingFilme.Comentarios);
+                        }
+
+                        _dbContext.Filme.Remove(existingFilme);
+                        _dbContext.SaveChanges();
+
+                        // Confirmar a transação
+                        transaction.Commit();
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ocorreu um erro, desfazer a transação
+                    transaction.Rollback();
+                    throw;
+                }
             }
         }
 
